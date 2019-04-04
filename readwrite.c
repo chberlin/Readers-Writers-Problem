@@ -9,15 +9,24 @@ void *lastThread(void *arg);
 void *handleReaders(void * arg);
 void *handleWriters(void *arg);
 
+void Pthread_mutex_lock(pthread_mutex_t * mutex) {
+	int rc = pthread_mutex_lock(mutex);
+	if(rc != 0){
+		fprintf(stderr, "Error locking mutex\n");
+		exit(2);
+	}
+}
+void Pthread_mutex_unlock(pthread_mutex_t * mutex) {
+	int rc = pthread_mutex_unlock(mutex);
+	if(rc != 0){
+		fprintf(stderr, "Error unlocking mutex\n");
+		exit(2);
+	}
+}
+
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-int rc = pthread_mutex_lock(&lock);
-if(rc == 0) exit(2);
-//Pthread_mutex_lock(&lock);
-//pthread_cond_t  cond = PTHREAD_COND_INITIALIZER;
-
-
+pthread_cond_t  cond = PTHREAD_COND_INITIALIZER;
 linkedlist list;
-linkedlist_Init(&list);
 
 int main(int argc, char ** argv, char ** envp) {
 
@@ -45,8 +54,9 @@ int main(int argc, char ** argv, char ** envp) {
 		printf("Error: Incorrect W value, choose value between 1 and 9\n");
 		exit(1);
 	}
-	
+
 	createThreads(num, numreaders, numwriters);
+	linkedlist_Init(&list);
 	return 0;
 }
 
@@ -100,7 +110,9 @@ void *lastThread(void *arg){
 void *handleReaders(void * arg){
 	int num = *((int *) arg);
 	free(arg);
+	Pthread_mutex_lock(&lock);
 	fprintf(stdout, "Reader %d\n", num);
+	Pthread_mutex_unlock(&lock);
 	
 	
 }
@@ -109,6 +121,9 @@ void *handleWriters(void *arg){
 	int num = *((int *) arg);
 	free(arg);
 	fprintf(stdout, "Writer %d\n", num);
+
+	int number = rand() % 100;
+	number = number % 10;
 	
 }
 

@@ -1,5 +1,5 @@
-readwrite: readwrite.o
-	gcc readwrite.o -o readwrite -pthread
+readwrite: readwrite.o 
+	gcc readwrite.o -o readwrite -lpthread
 
 readwrite.o: readwrite.c
 	gcc -c readwrite.c

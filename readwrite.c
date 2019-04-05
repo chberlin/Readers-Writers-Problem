@@ -70,7 +70,7 @@ int createThreads(int num, int numreaders, int numwriters){
 	for(i = 0; i < numwriters; i++){
 		int *args = (int*)malloc(2 * sizeof(int));
 		args[0] = num;
-		args[1] = i;
+		args[1] = i + 1;
 		//int *N = malloc(sizeof(num));
 		//*N = num;
 		if(pthread_create(&threads[i], NULL, handleWriters, args) != 0){
@@ -84,7 +84,7 @@ int createThreads(int num, int numreaders, int numwriters){
 		//*N = num;
 		int *args = (int*)malloc(2 * sizeof(int));
 		args[0] = num;
-		args[1] = j-i;
+		args[1] = j-i + 1;
 		if(pthread_create(&threads[j], NULL, handleReaders, args)!= 0){
 			fprintf(stderr, "Error: Reader Thread %d cannot created\n", j-i);
 			exit(2);
@@ -115,26 +115,54 @@ void *lastThread(void *arg){
 }
 
 void *handleReaders(void * arg){
-	//int num = *((int *) arg);
-	//int args[] = *((int *) arg);
-	//int num = arg[0];
-	//int threadI = arg[1];
+	
+	int * arr = (int *) arg;
+
+	int linesToRead = arr[0];
+	int iThread = arr[1];
+	printf("num Readers = %d\n", num);
+	printf("reader i, where i = %d\n", iThread);
+
 	free(arg);
 	Pthread_mutex_lock(&lock);
-	//fprintf(stdout, "Reader %d\n", num);
 	Pthread_mutex_unlock(&lock);
 	
 	
 }
 
 void *handleWriters(void *arg){
-	//int num = *((int *) arg);
-	free(arg);
-	//fprintf(stdout, "Writer %d\n", num);
 
-	int number = rand() % 100;
-	number = number % 10;
+	int * arr = (int *) arg;
+
+	int linesToWrite = arr[0];
+	int iThread = arr[1];
+	printf("num writers = %d\n", num);
+	printf("writer i, where i = %d\n", iThread);
+
+	free(arg);
+
+	int number = rand() % 100; // random num from 1 - 100
+	if (number % 10 == iThread) {
+		linkedlist_Insert(&list, number);
+	}
+
+	int number;
+	int counter = 0;
 	
+	while (counter != linesToWrite) {
+
+		number = rand() % 100; // random num from 1 - 100
+		if (number % 10 == iThread) {
+			linkedlist_Insert(&list, number);
+			counter += 1;
+	
+			// now, make the thread wait for a bit
+			
+		}
+
+	}
+
+
 }
 
 

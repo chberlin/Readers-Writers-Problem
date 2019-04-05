@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <unistd.h>
 #include "linkedlist.c"
 
 
@@ -24,9 +25,12 @@ void Pthread_mutex_unlock(pthread_mutex_t * mutex) {
 	}
 }
 
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t readersLock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t listLock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t  cond = PTHREAD_COND_INITIALIZER;
 linkedlist list;
+int sleepTime = 1;
+int readcount = 0;
 
 int main(int argc, char ** argv, char ** envp) {
 
@@ -54,9 +58,8 @@ int main(int argc, char ** argv, char ** envp) {
 		printf("Error: Incorrect W value, choose value between 1 and 9\n");
 		exit(1);
 	}
-
-	createThreads(num, numreaders, numwriters);
 	linkedlist_Init(&list);
+	createThreads(num, numreaders, numwriters);
 	return 0;
 }
 
@@ -120,49 +123,44 @@ void *handleReaders(void * arg){
 
 	int linesToRead = arr[0];
 	int iThread = arr[1];
-	printf("num Readers = %d\n", num);
-	printf("reader i, where i = %d\n", iThread);
+	//printf("num Readers = %d\n", linesToRead);
+	//printf("reader i, where i = %d\n", iThread);
 
 	free(arg);
-	Pthread_mutex_lock(&lock);
-	Pthread_mutex_unlock(&lock);
+
+	int linesRead = 0;
+	int count = 0;
+	for(int i = 1; i <= linesToRead; i++){
+		count = linkedlist_count(&list, iThread);
+		fprintf(stdout, "Reader %d: Read %d: %d values ending in %d\n", iThread, i, count, iThread);
+	}
+	//
+	//Pthread_mutex_unlock(&lock);
 	
 	
 }
 
 void *handleWriters(void *arg){
-
 	int * arr = (int *) arg;
-
 	int linesToWrite = arr[0];
 	int iThread = arr[1];
-	printf("num writers = %d\n", num);
-	printf("writer i, where i = %d\n", iThread);
+
+	//printf("num writers = %d\n", linesToWrite);
+	//printf("writer i, where i = %d\n", iThread);
 
 	free(arg);
 
-	int number = rand() % 100; // random num from 1 - 100
-	if (number % 10 == iThread) {
-		linkedlist_Insert(&list, number);
-	}
-
 	int number;
 	int counter = 0;
-	
 	while (counter != linesToWrite) {
-
 		number = rand() % 100; // random num from 1 - 100
 		if (number % 10 == iThread) {
 			linkedlist_Insert(&list, number);
 			counter += 1;
-	
-			// now, make the thread wait for a bit
-			
+			sleep(sleepTime);
 		}
-
+		printf("Linked List size %d\n", list.size);
 	}
-
-
 }
 
 

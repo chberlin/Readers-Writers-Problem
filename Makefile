@@ -8,4 +8,4 @@ linkedlist.o: linkedlist.c
 	gcc -c -g linkedlist.c
 
 clean:
-	rm *.o readwrite
+	rm *.o *.txt readwrite

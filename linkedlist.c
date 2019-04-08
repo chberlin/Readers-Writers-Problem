@@ -36,18 +36,6 @@ void linkedlist_Insert(linkedlist *L, int value){
 	newNode->next =L-> head;
 	L->head = newNode;
 	L->size++;
-	/* L->head = newNode;
-	if(current == NULL){
-		current = newNode;
-		L->size+=1;
-		return;
-	}
-	while(current != NULL){
-		current = current->next;
-	}
-	current = newNode;
-	L->size+=1;
-	*/
 	return;
 }
 
@@ -57,7 +45,6 @@ int linkedlist_count(linkedlist *L, int iThread){
 	int count = 0;
 	while(current != NULL){
 		if(((current -> key) % 10) == iThread){
-			// printf("current -> key = %d ; iThread = %d\n", current->key, iThread);
 			count++;
 		}
 		current = current->next;

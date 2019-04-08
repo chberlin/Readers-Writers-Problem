@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <time.h>
 #include "linkedlist.c"
 
 
@@ -25,12 +26,14 @@ void Pthread_mutex_unlock(pthread_mutex_t * mutex) {
 	}
 }
 
-pthread_mutex_t readersLock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t listLock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t rmutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t wmutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t resource = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t readTry = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t  cond = PTHREAD_COND_INITIALIZER;
 linkedlist list;
-int sleepTime = 1;
 int readcount = 0;
+int writecount = 0;
 
 int main(int argc, char ** argv, char ** envp) {
 
@@ -60,6 +63,7 @@ int main(int argc, char ** argv, char ** envp) {
 	}
 	linkedlist_Init(&list);
 	createThreads(num, numreaders, numwriters);
+	//linkedlist_Destroy(&list);
 	return 0;
 }
 
@@ -119,52 +123,86 @@ void *lastThread(void *arg){
 
 void *handleReaders(void * arg){
 
-	Pthread_mutex_lock(readersLock);
-	
 	int * arr = (int *) arg;
 
 	int linesToRead = arr[0];
 	int iThread = arr[1];
 	//printf("num Readers = %d\n", linesToRead);
 	//printf("reader i, where i = %d\n", iThread);
-
 	free(arg);
-
-
 	int linesRead = 0;
 	int count = 0;
+	char fileName[] = "reader_0.txt";
+	
 	for(int i = 1; i <= linesToRead; i++){
+		Pthread_mutex_lock(&readTry); //inicate reader is trying to enter
+		Pthread_mutex_lock(&rmutex); // entry section lock to avoid race condition with other readers
+		readcount++; //report self as reader
+		if(readcount == 1){
+			Pthread_mutex_lock(&resource);//if first reader, lock the linked list
+		}
+		Pthread_mutex_unlock(&rmutex);//releae lock so other readers can enter
+		Pthread_mutex_unlock(&readTry);//done trying to access linked list
+
 		count = linkedlist_count(&list, iThread);
-		fprintf(stdout, "Reader %d: Read %d: %d values ending in %d\n", iThread, i, count, iThread);
+		char iReplace = iThread + '0';
+		fileName[7] = iReplace;
+		FILE *pFile = fopen (fileName, "a");
+		fprintf(pFile, "Reader %d: Read %d: %d values ending in %d\n", iThread, i, count, iThread);
+		fclose(pFile);
+
+
+		Pthread_mutex_lock(&rmutex); //locking exit section to avoid race condition
+		readcount--; //report self as leaving
+		if(readcount == 0){
+			Pthread_mutex_unlock(&resource); //if last reader, must unlock linkedlist
+		}
+		Pthread_mutex_unlock(&rmutex);//release exit lock
+
+		struct timespec tim;
+			tim.tv_sec = 1;
+			tim.tv_nsec = 0;
+		if(nanosleep(&tim, NULL) < 0){
+			fprintf(stderr, "Nano sleep system call failed \n");
+			exit(1);
+		}
 	}
-	//
-	//Pthread_mutex_unlock(&lock);
-	
-	
 }
 
 void *handleWriters(void *arg){
 	int * arr = (int *) arg;
 	int linesToWrite = arr[0];
 	int iThread = arr[1];
-
-	//printf("num writers = %d\n", linesToWrite);
-	//printf("writer i, where i = %d\n", iThread);
-
 	free(arg);
-
 	int number;
 	int counter = 0;
 	while (counter != linesToWrite) {
+		Pthread_mutex_lock(&wmutex); //reserve entry section for writers- avoids race conditons
+		writecount++; //report self as writer
+		if(writecount == 1){ //check if first writer
+			Pthread_mutex_lock(&readTry); //if first, lock out readers from accesing
+		}
+		Pthread_mutex_unlock(&wmutex);//release entry section, let other writers in
+		Pthread_mutex_lock(&resource);//lock the linkedlist
 		number = rand() % 100; // random num from 1 - 100
-		// printf("Random number = %d, Thread # = %d\n", number, iThread);
 		if (number % 10 == iThread) {
 			linkedlist_Insert(&list, number);
 			counter += 1;
-			sleep(sleepTime);
 		}
-		// printf("Linked List size %d\n", list.size);
+		Pthread_mutex_unlock(&resource);//unlock the linkedlist
+		Pthread_mutex_lock(&wmutex);//reserve exit section
+		writecount--;//indicate self is leaving
+		if(writecount == 0){
+			Pthread_mutex_unlock(&readTry);//if last  writer, unlock for readers to use
+		}
+		Pthread_mutex_unlock(&wmutex); // releae exit section
+
+		struct timespec tim; //sleep after to force thread switching
+			tim.tv_sec = 1;
+			tim.tv_nsec = 0;
+		if(nanosleep(&tim, NULL) < 0){
+				fprintf(stderr, "Nano sleep system call failed \n");
+				exit(1);
+		}
 	}
 }
-
-

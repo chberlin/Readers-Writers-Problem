@@ -118,6 +118,8 @@ void *lastThread(void *arg){
 }
 
 void *handleReaders(void * arg){
+
+	Pthread_mutex_lock(readersLock);
 	
 	int * arr = (int *) arg;
 
@@ -127,6 +129,7 @@ void *handleReaders(void * arg){
 	//printf("reader i, where i = %d\n", iThread);
 
 	free(arg);
+
 
 	int linesRead = 0;
 	int count = 0;
@@ -154,12 +157,13 @@ void *handleWriters(void *arg){
 	int counter = 0;
 	while (counter != linesToWrite) {
 		number = rand() % 100; // random num from 1 - 100
+		// printf("Random number = %d, Thread # = %d\n", number, iThread);
 		if (number % 10 == iThread) {
 			linkedlist_Insert(&list, number);
 			counter += 1;
 			sleep(sleepTime);
 		}
-		printf("Linked List size %d\n", list.size);
+		// printf("Linked List size %d\n", list.size);
 	}
 }
 

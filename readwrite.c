@@ -30,10 +30,13 @@ pthread_mutex_t rmutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t wmutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t resource = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t readTry = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t  cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t  lastTCond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t lastT = PTHREAD_MUTEX_INITIALIZER;
 linkedlist list;
 int readcount = 0;
 int writecount = 0;
+int lastRead = 1;
+int almostDone;
 
 int main(int argc, char ** argv, char ** envp) {
 
@@ -61,6 +64,7 @@ int main(int argc, char ** argv, char ** envp) {
 		printf("Error: Incorrect W value, choose value between 1 and 9\n");
 		exit(1);
 	}
+	almostDone = numreaders;
 	linkedlist_Init(&list);
 	createThreads(num, numreaders, numwriters);
 	//linkedlist_Destroy(&list);
@@ -117,8 +121,14 @@ int createThreads(int num, int numreaders, int numwriters){
 
 void *lastThread(void *arg){
 	//waits on condition variable when only single reader thread remains
-	fprintf(stdout, "Almost Done!\n");
 	free(arg);
+	Pthread_mutex_lock(&lastT);
+	while(almostDone > 1){
+		pthread_cond_wait(&lastTCond, &lastT);
+	}
+	Pthread_mutex_unlock(&lastT);
+	fprintf(stdout, "Almost Done!\n");
+	
 }
 
 void *handleReaders(void * arg){
@@ -127,8 +137,6 @@ void *handleReaders(void * arg){
 
 	int linesToRead = arr[0];
 	int iThread = arr[1];
-	//printf("num Readers = %d\n", linesToRead);
-	//printf("reader i, where i = %d\n", iThread);
 	free(arg);
 	int linesRead = 0;
 	int count = 0;
@@ -143,30 +151,34 @@ void *handleReaders(void * arg){
 		}
 		Pthread_mutex_unlock(&rmutex);//releae lock so other readers can enter
 		Pthread_mutex_unlock(&readTry);//done trying to access linked list
-
 		count = linkedlist_count(&list, iThread);
 		char iReplace = iThread + '0';
 		fileName[7] = iReplace;
 		FILE *pFile = fopen (fileName, "a");
 		fprintf(pFile, "Reader %d: Read %d: %d values ending in %d\n", iThread, i, count, iThread);
 		fclose(pFile);
-
+		//fprintf(stdout, "Reader %d: Read %d: %d values ending in %d\n", iThread, i, count, iThread);
 
 		Pthread_mutex_lock(&rmutex); //locking exit section to avoid race condition
 		readcount--; //report self as leaving
+
 		if(readcount == 0){
 			Pthread_mutex_unlock(&resource); //if last reader, must unlock linkedlist
 		}
+		
 		Pthread_mutex_unlock(&rmutex);//release exit lock
-
 		struct timespec tim;
-			tim.tv_sec = 1;
-			tim.tv_nsec = 0;
+			tim.tv_sec = 0;
+			tim.tv_nsec = 5;
 		if(nanosleep(&tim, NULL) < 0){
 			fprintf(stderr, "Nano sleep system call failed \n");
 			exit(1);
 		}
 	}
+	Pthread_mutex_lock(&lastT);
+	almostDone--;
+	pthread_cond_signal(&lastTCond);
+	Pthread_mutex_unlock(&lastT);
 }
 
 void *handleWriters(void *arg){
@@ -198,8 +210,8 @@ void *handleWriters(void *arg){
 		Pthread_mutex_unlock(&wmutex); // releae exit section
 
 		struct timespec tim; //sleep after to force thread switching
-			tim.tv_sec = 1;
-			tim.tv_nsec = 0;
+			tim.tv_sec = 0;
+			tim.tv_nsec = 5;
 		if(nanosleep(&tim, NULL) < 0){
 				fprintf(stderr, "Nano sleep system call failed \n");
 				exit(1);

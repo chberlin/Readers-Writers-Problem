@@ -51,3 +51,16 @@ int linkedlist_count(linkedlist *L, int iThread){
 	}
 	return count;
 }
+
+void linkedlist_printAll(linkedlist *L){
+
+	node *current = L->head;
+	while(current != NULL){
+		//if(((current -> key) % 10) == iThread){
+		//	count++;
+		//}
+		printf("[%d]", current->key);
+		current = current->next;
+	}
+	printf("\n");
+}

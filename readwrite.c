@@ -25,6 +25,20 @@ void Pthread_mutex_unlock(pthread_mutex_t * mutex) {
 		exit(2);
 	}
 }
+void Pthread_cond_wait(pthread_cond_t * cond, pthread_mutex_t * mutex) {
+	int rc = pthread_cond_wait(cond, mutex);
+	if(rc != 0){
+		fprintf(stderr, "Error waiting\n");
+		exit(2);
+	}
+}
+void Pthread_cond_signal(pthread_cond_t * cond) {
+	int rc = pthread_cond_signal(cond);
+	if(rc != 0){
+		fprintf(stderr, "Error signaling\n");
+		exit(2);
+	}
+}
 
 pthread_mutex_t rmutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t wmutex = PTHREAD_MUTEX_INITIALIZER;
@@ -124,7 +138,7 @@ void *lastThread(void *arg){
 	free(arg);
 	Pthread_mutex_lock(&lastT);
 	while(almostDone > 1){
-		pthread_cond_wait(&lastTCond, &lastT);
+		Pthread_cond_wait(&lastTCond, &lastT);
 	}
 	Pthread_mutex_unlock(&lastT);
 	fprintf(stdout, "Almost Done!\n");
@@ -177,7 +191,7 @@ void *handleReaders(void * arg){
 	}
 	Pthread_mutex_lock(&lastT);
 	almostDone--;
-	pthread_cond_signal(&lastTCond);
+	Pthread_cond_signal(&lastTCond);
 	Pthread_mutex_unlock(&lastT);
 }
 

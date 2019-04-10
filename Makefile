@@ -9,3 +9,6 @@ linkedlist.o: linkedlist.c
 
 clean:
 	rm *.o *.txt readwrite
+
+cleanText:
+	rm *.txt
